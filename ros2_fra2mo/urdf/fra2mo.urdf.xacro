@@ -4,6 +4,7 @@
   <xacro:include filename="$(find ros2_fra2mo)/urdf/fra2mo_base_macro.xacro"/>
   <xacro:include filename="$(find ros2_fra2mo)/urdf/lidar_gazebo_macro.xacro"/> 
   <!-- <xacro:include filename="$(find ros2_fra2mo)/urdf/d435_gazebo_macro.xacro" />  -->
+  <xacro:include filename="$(find ros2_fra2mo)/urdf/camera_gazebo_macro.xacro"/>
   
   <xacro:property name="LIDAR" value="True"/>
   <!--<xacro:property name="DEPTH" value="True"/>-->
@@ -16,7 +17,10 @@
     <xacro:lidar_gazebo_sensor parent="lidar_link"/>
   </xacro:if>
 
-  <!-- RGBD Sensor (D435 Camera) -->
+  <!-- RGB camera for Gazebo Fortress on d435_link (CW3 Task 4: ArUco detection) -->
+  <xacro:camera_gazebo_sensor parent="d435_link"/>
+
+  <!-- RGBD Sensor (D435 Camera, Gazebo Classic plugin: not usable in Fortress) -->
   <!--
   <xacro:if value="${DEPTH}">
     <xacro:d435_gazebo_sensor parent="d435_link" />

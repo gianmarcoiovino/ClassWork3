@@ -8,8 +8,8 @@ ROS 2 Humble · Gazebo **Fortress** (`ros-humble-ros-gz`) · SLAM Toolbox · Nav
 
 | Folder | Content |
 |---|---|
-| `docker/` | Dockerfile with all the dependencies of this classwork |
-| `ros2_fra2mo/` | course package (URDF, world `leonardo_race_field`, launch files, Nav2/SLAM/AMCL config) |
+| `project_docker/` | Dockerfile with all the dependencies of this classwork |
+| `ros2_fra2mo/` | course package (URDF, world `leonardo_race_field`, launch files, Nav2/SLAM/AMCL config), with the Task 4 additions listed below |
 | `ros2_fra2mo/maps/my_map.{pgm,yaml}` | map built with SLAM + autonomous exploration |
 | `m-explore-ros2/` | `explore_lite` (frontier explorer); `map_merge` disabled with `COLCON_IGNORE` |
 
@@ -19,7 +19,7 @@ This folder is the `src` of the workspace: the run script mounts it as `~/ros2_w
 
 ```bash
 git clone https://github.com/gianmarcoiovino/ClassWork3.git ~/Desktop/CW3
-# copy docker/Dockerfile next to the course docker scripts, then:
+# copy project_docker/Dockerfile next to the course docker scripts, then:
 ./docker_build_image.sh project-img
 ./docker_run_container.sh project-img project-img_cont Desktop/CW3
 # inside the container
@@ -86,7 +86,76 @@ ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped \
 
 ## Task 4 — ArUco markers in the map frame
 
-_To be completed._
+### What was missing and what was added
+
+In the course package the Task 4 setup was not usable in Gazebo Fortress, so it was completed (all changes inside `ros2_fra2mo`):
+
+| Missing | Added | Why |
+|---|---|---|
+| camera on fra2mo (the D435 macro is commented and uses `libgazebo_ros_depth_camera.so`, Gazebo Classic) | `urdf/camera_gazebo_macro.xacro`: Fortress `camera` sensor, 640×480, 15 Hz, HFOV 80°, on `d435_camera_link` (3.5 cm in front of `d435_link`); optical frame `d435_optical_frame` | `d435_link` lies inside the robot shell: the first version only saw the inside of the body |
+| camera topics in ROS | bridge of `/camera/image` and `/camera/camera_info` in `gazebo_fra2mo.launch.py` | |
+| markers in the world (the only include was commented out) | 5 markers, ids 0–4, in `worlds/leonardo_race_field.sdf`, centre at z 0.28 | the walls are solid only for z ∈ [0.10, 0.45], windows above |
+| marker texture in Fortress (Ogre material scripts are ignored) | `<pbr><albedo_map>` in `models/marker_<id>/marker_<id>.sdf`, explicit white support | |
+| detector launch | `launch/fra2mo_aruco.launch.py` | |
+
+Marker poses (world = map, since the robot starts at the origin of both):
+
+| id | x | y | z (world) | wall |
+|---|---|---|---|---|
+| 0 | −7.50 | 4.99 | 0.28 | north |
+| 1 | 1.00 | 4.99 | 0.28 | north |
+| 2 | 9.99 | 2.50 | 0.28 | east |
+| 3 | 2.50 | −4.99 | 0.28 | south |
+| 4 | −9.99 | 2.50 | 0.28 | west |
+
+### Detector parameters (Find out)
+
+| Parameter | Value | How it was found |
+|---|---|---|
+| `marker_size` | **0.30 m** | the texture `ar_tag_<id>.png` (ARUCO_ORIGINAL) is black up to its edge and fills the 0.30 m tag visual; the 0.32 m white support gives the quiet zone. Ids checked offline with OpenCV (`ar_tag_k.png` → id k) |
+| `camera_frame` | **`d435_optical_frame`** | optical frame in the TF tree (z forward, x right, y down) |
+| `/image`, `/camera_info` | **`/camera/image`**, **`/camera/camera_info`** | `ros2 topic list` |
+| `reference_frame` | `map` | each detection becomes a place on the map |
+
+### Run
+
+```bash
+ros2 launch ros2_fra2mo gazebo_fra2mo.launch.py
+ros2 launch ros2_fra2mo fra2mo_navigation.launch.py          # AMCL + Nav2, give the initial pose
+rviz2 -d $(ros2 pkg prefix ros2_fra2mo)/share/ros2_fra2mo/rviz_conf/navigation.rviz --ros-args -p use_sim_time:=true
+ros2 launch ros2_fra2mo fra2mo_aruco.launch.py
+ros2 topic echo /aruco_marker_publisher/markers_list           # ids in view
+ros2 topic echo /aruco_marker_publisher/markers                # poses in map
+```
+
+RViz: *Add → By topic → `/aruco_marker_publisher/result` → Image*. Goals in front of the markers, e.g. id 1:
+
+```bash
+ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
+"{pose: {header: {frame_id: map}, pose: {position: {x: 1.0, y: 3.5}, orientation: {z: 0.7071, w: 0.7071}}}}"
+```
+
+Measurement at each goal (marker estimate, AMCL estimate, ground truth from Gazebo):
+
+```bash
+ros2 topic echo /aruco_marker_publisher/markers --once | grep -E "  id:|position" -A3
+timeout 3 ros2 run tf2_ros tf2_echo map base_footprint 2>/dev/null | grep -m1 Translation
+ign model -m fra2mo -p | grep -A1 XYZ
+```
+
+### Results
+
+Markers found: **3, 0, 1** (in this order). Errors in the map plane (m):
+
+| id | marker estimate (x, y) | true (x, y) | marker error | AMCL error (robot) | residual = marker − AMCL |
+|---|---|---|---|---|---|
+| 3 | (2.673, −4.888) | (2.50, −4.99) | (+0.173, +0.102) → **0.20** | (+0.166, +0.111) → 0.20 | (+0.007, −0.008) → **0.011** |
+| 0 | (−7.205, 4.760) | (−7.50, 4.99) | (+0.295, −0.230) → **0.37** | (+0.363, −0.251) → 0.44 | (−0.068, +0.021) → **0.071** |
+| 1 | (1.222, 4.827) | (1.00, 4.99) | (+0.222, −0.163) → **0.28** | (+0.233, −0.165) → 0.29 | (−0.011, +0.002) → **0.011** |
+
+z of the estimates: 0.181–0.183 m = 0.28 (world) − 0.10 (floor height, the origin of `map` is at `base_footprint`).
+
+**Find out.** `marker_publisher` chains the marker pose in the optical frame with the TF `map → d435_optical_frame`, so the pose in `map` **inherits the localization error of AMCL**: the marker error is almost the same as the robot error, and the camera alone is accurate to about 1 cm. The larger residual for id 0 (7 cm) is compatible with a small AMCL heading error (≈ 3° at ≈ 1.3 m), not measured here. The AMCL error grows with the distance travelled (0.20 → 0.44 m): the field is large, with long straight walls and few distinctive features. Consequence: to approach a target precisely, use the pose of the marker relative to the robot (camera frame), not its pose in the map.
 
 ## Commits
 

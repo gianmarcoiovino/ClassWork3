@@ -79,7 +79,9 @@ def generate_launch_description():
                    '/model/fra2mo/odometry@nav_msgs/msg/Odometry@ignition.msgs.Odometry',
                    '/model/fra2mo/tf@tf2_msgs/msg/TFMessage@ignition.msgs.Pose_V',
                    '/lidar@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan',
-                   '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock'],
+                   '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
+                   '/camera/image@sensor_msgs/msg/Image[ignition.msgs.Image',
+                   '/camera/camera_info@sensor_msgs/msg/CameraInfo[ignition.msgs.CameraInfo'],
                    #'/lidar/points@sensor_msgs/msg/PointCloud2[ignition.msgs.PointCloudPacked'],
         remappings=[
             ("/tf", "tf"),

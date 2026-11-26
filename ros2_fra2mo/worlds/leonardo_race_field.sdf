@@ -132,6 +132,35 @@
       <uri>model://intruder</uri>
     </include>
 
+    <!-- AR markers (CW3 Task 4): ARUCO_ORIGINAL ids 0-4, black square 0.30 m.
+         Inner wall faces at x = +-10, y = +-5; wall solid for z in [0.10, 0.45] (windows above).
+         Tag normal = model local +z, rotated to face the inside of the field. -->
+    <include>
+      <name>marker_0</name>
+      <uri>model://marker_0</uri>
+      <pose>-7.5 4.99 0.28 1.5708 0 0</pose>        <!-- north wall, faces -y -->
+    </include>
+    <include>
+      <name>marker_1</name>
+      <uri>model://marker_1</uri>
+      <pose>1.0 4.99 0.28 1.5708 0 0</pose>         <!-- north wall, faces -y -->
+    </include>
+    <include>
+      <name>marker_2</name>
+      <uri>model://marker_2</uri>
+      <pose>9.99 2.5 0.28 1.5708 0 -1.5708</pose>   <!-- east wall, faces -x -->
+    </include>
+    <include>
+      <name>marker_3</name>
+      <uri>model://marker_3</uri>
+      <pose>2.5 -4.99 0.28 1.5708 0 3.14159</pose>  <!-- south wall, faces +y -->
+    </include>
+    <include>
+      <name>marker_4</name>
+      <uri>model://marker_4</uri>
+      <pose>-9.99 2.5 0.28 1.5708 0 1.5708</pose>   <!-- west wall, faces +x -->
+    </include>
+
     <!-- AR markers -->
     <!--include>
       <name>tool_0_tag</name>
